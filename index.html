@@ -150,9 +150,11 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <div class="chat-container bg-white">
+        <!-- Chat Header -->
         <div class="bg-blue-600 text-white p-4 text-center rounded-t-xl shadow-md relative">
             <h1 class="text-2xl font-bold">जार्विस AI</h1>
             <p class="text-sm opacity-80">नमस्ते, main aapki kaise madad kar sakta hoon?</p>
+            <!-- Clear Chat Button -->
             <button id="clear-button" class="absolute top-4 right-4 text-white hover:text-gray-200 focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -160,12 +162,15 @@
             </button>
         </div>
 
+        <!-- Message Area -->
         <div id="message-area" class="message-area">
+            <!-- Initial Bot Message -->
             <div class="bot-message message-bubble">
                 नमस्ते, main jarrvis hoon. Main ek AI sahayak hoon.
             </div>
         </div>
 
+        <!-- Input Area -->
         <div class="input-area">
             <input type="text" id="message-input" placeholder="Yahaan type karein..." class="flex-grow rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <button id="voice-button">
@@ -350,8 +355,10 @@
                 voiceButton.disabled = true;
 
                 const imageKeywords = ['tasveer', 'chitra', 'image', 'photo'];
+                const videoKeywords = ['video', 'animation', 'short film'];
                 
                 const isImageRequest = imageKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+                const isVideoRequest = videoKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
 
                 if (isImageRequest) {
                     showGeneratingIndicator();
@@ -362,6 +369,27 @@
                     } else {
                         addMessage(botResponse.content, 'bot');
                     }
+                } else if (isVideoRequest) {
+                    showGeneratingIndicator();
+                    const basePrompt = userMessage.replace(/video|animation|short film/gi, '').trim() || 'A short story';
+                    
+                    addMessage("Jarvis: Main video nahi bana sakta, lekin main aapke liye ek choti kahani ke roop mein kuch tasveerein bana raha hoon.", 'bot');
+                    
+                    const prompts = [
+                        `${basePrompt}, first scene`,
+                        `${basePrompt}, second scene`,
+                        `${basePrompt}, third scene`,
+                        `${basePrompt}, fourth scene`
+                    ];
+                    
+                    for (const prompt of prompts) {
+                        const botResponse = await getImageResponse(prompt);
+                        if (botResponse.type === 'image') {
+                            addImageMessage(botResponse.content);
+                        }
+                    }
+                    hideIndicators();
+                    
                 } else {
                     showTypingIndicator();
                     const botResponse = await getLLMResponse(userMessage);
@@ -428,5 +456,4 @@
         };
     </script>
 </body>
-    </html>
-    
+</html>
