@@ -1,349 +1,172 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
-// Global variables for Firebase configuration, provided by the canvas environment
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-const App = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [chats, setChats] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [currentChatId, setCurrentChatId] = useState(null);
-  const [chatName, setChatName] = useState('');
-  const [chatType, setChatType] = useState('private');
-  const messagesEndRef = useRef(null);
-  const [alertMessage, setAlertMessage] = useState(null);
-
-  const showAlert = (message) => {
-    setAlertMessage(message);
-    setTimeout(() => setAlertMessage(null), 3000); // Hide after 3 seconds
-  };
-
-  // 1. Authentication and User Status Management
-  useEffect(() => {
-    // Authenticate the user
-    const setupAuth = async () => {
-      try {
-        if (initialAuthToken) {
-          await signInWithCustomToken(auth, initialAuthToken);
-        } else {
-          await signInAnonymously(auth);
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI इमेज जनरेटर</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
         }
-      } catch (error) {
-        console.error('Firebase authentication failed:', error);
-      }
-      setIsAuthReady(true);
-    };
+        .container {
+            width: 100%;
+            max-width: 768px;
+            background-color: #1e293b;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #334155;
+            color: #f8fafc;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .message-box.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
 
-    setupAuth();
+<div class="container">
+    <h1 class="text-3xl font-bold mb-4">AI इमेज जनरेटर</h1>
+    <p class="text-gray-400 mb-6">नीचे दिए गए टेक्स्ट बॉक्स में इमेज का विवरण टाइप करें और 'जनरेट' बटन दबाएँ।</p>
 
-    // Listen for auth state changes
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        setUserId(user.uid);
-      } else {
-        setCurrentUser(null);
-        setUserId(null);
-      }
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
-
-  // Set up online/offline status listener and update function
-  useEffect(() => {
-    if (!userId || !isAuthReady) return;
-
-    // Use the correct public data path for online users
-    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userId);
-
-    const updateStatus = async (isOnline) => {
-      const statusData = {
-        displayName: `User ${userId.substring(0, 6)}`,
-        isOnline: isOnline,
-        lastSeen: serverTimestamp(),
-      };
-      await setDoc(userDocRef, statusData, { merge: true });
-    };
-
-    // Set online status on mount
-    updateStatus(true);
-
-    // Set up a listener for online users
-    // Use the correct public data path
-    const onlineUsersQuery = collection(db, 'artifacts', appId, 'public', 'data', 'users');
-    const unsubscribeOnlineUsers = onSnapshot(onlineUsersQuery, (snapshot) => {
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOnlineUsers(users.filter(u => u.isOnline && u.id !== userId));
-    });
-
-    // Cleanup: Set user to offline when component unmounts
-    const handleBeforeUnload = () => {
-      updateStatus(false);
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      updateStatus(false);
-      unsubscribeOnlineUsers();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [userId, isAuthReady]);
-
-  // 2. Chat Data Logic
-  useEffect(() => {
-    if (!userId || !isAuthReady) return;
-
-    // Listen for the user's chats
-    const userChatsRef = collection(db, 'artifacts', appId, 'users', userId, 'chats');
-    const unsubscribeChats = onSnapshot(userChatsRef, (snapshot) => {
-      const fetchedChats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setChats(fetchedChats);
-      if (fetchedChats.length > 0 && !currentChatId) {
-        setCurrentChatId(fetchedChats[0].id);
-        setChatName(fetchedChats[0].name);
-        setChatType(fetchedChats[0].type);
-      }
-    });
-
-    return () => unsubscribeChats();
-  }, [userId, isAuthReady, currentChatId]);
-
-  // Listen for messages in the current chat
-  useEffect(() => {
-    if (!currentChatId || !userId) return;
-
-    let chatCollectionRef;
-    if (chatType === 'private') {
-      chatCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'chats', currentChatId, 'messages');
-    } else { // group
-      chatCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages');
-    }
-    
-    const unsubscribeMessages = onSnapshot(chatCollectionRef, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMessages(fetchedMessages.sort((a, b) => a.createdAt - b.createdAt));
-    });
-
-    return () => unsubscribeMessages();
-  }, [currentChatId, chatType, userId]);
-
-  // Scroll to the bottom of the message list
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // 3. Functions
-  const handleSendMessage = async () => {
-    if (text.trim() === '' || !currentChatId) return;
-
-    try {
-      let chatCollectionRef;
-      if (chatType === 'private') {
-        chatCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'chats', currentChatId, 'messages');
-        const otherParticipantId = currentChatId.replace(userId, '').replace('_', '');
-        // Also add the message to the other user's chat
-        const otherChatRef = collection(db, 'artifacts', appId, 'users', otherParticipantId, 'chats', currentChatId, 'messages');
-        await addDoc(otherChatRef, {
-          text: text,
-          senderId: userId,
-          createdAt: serverTimestamp(),
-        });
-      } else { // group
-        chatCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages');
-      }
-
-      await addDoc(chatCollectionRef, {
-        text: text,
-        senderId: userId,
-        createdAt: serverTimestamp(),
-      });
-
-      setText('');
-    } catch (e) {
-      console.error('Error adding document: ', e);
-    }
-  };
-
-  const handleCreateChat = async () => {
-    if (chatName.trim() === '') {
-      showAlert('Chat name cannot be empty.');
-      return;
-    }
-    const newChatRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'chats'));
-    await setDoc(newChatRef, { name: chatName, type: 'group', createdAt: serverTimestamp() });
-    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'chats', newChatRef.id), { name: chatName, type: 'group' });
-    setCurrentChatId(newChatRef.id);
-    setChatName('');
-    setChatType('group');
-  };
-
-  const handleJoinPrivateChat = async (otherUserId) => {
-    // Generate a consistent chatId for private chats between two users
-    const chatId = userId < otherUserId ? `${userId}_${otherUserId}` : `${otherUserId}_${userId}`;
-    
-    // Add chat to the current user's chats collection
-    const myChatRef = doc(db, 'artifacts', appId, 'users', userId, 'chats', chatId);
-    await setDoc(myChatRef, { name: `Chat with User ${otherUserId.substring(0, 6)}`, type: 'private' });
-    
-    // Add chat to the other user's chats collection
-    const otherChatRef = doc(db, 'artifacts', appId, 'users', otherUserId, 'chats', chatId);
-    await setDoc(otherChatRef, { name: `Chat with User ${userId.substring(0, 6)}`, type: 'private' });
-    
-    setCurrentChatId(chatId);
-    setChatName(`Chat with User ${otherUserId.substring(0, 6)}`);
-    setChatType('private');
-  };
-
-  // 4. UI Rendering
-  if (!isAuthReady) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500"></div>
-        <p className="mt-4 text-lg text-indigo-700">Connecting to server...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-screen font-sans bg-gray-100 p-4">
-      <script src="https://cdn.tailwindcss.com"></script>
-      {alertMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white p-3 rounded-lg shadow-lg z-50">
-          {alertMessage}
-        </div>
-      )}
-      <div className="flex flex-col flex-1 bg-white rounded-lg shadow-xl overflow-hidden">
-        <header className="bg-indigo-700 text-white p-4 rounded-t-lg text-center shadow-lg">
-          <h1 className="text-3xl font-bold">Real-Time Chat</h1>
-          <p className="mt-1 text-sm text-indigo-200">
-            Your User ID: <span className="font-mono bg-indigo-600 px-2 py-1 rounded-full">{userId}</span>
-          </p>
-        </header>
-
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="w-1/4 bg-gray-50 p-4 border-r border-gray-200 flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Chats</h2>
-            <div className="flex-1 overflow-y-auto pr-2">
-              {chats.length > 0 ? (
-                chats.map((chat) => (
-                  <button
-                    key={chat.id}
-                    className={`block w-full text-left p-3 rounded-lg transition-colors duration-200 mb-2 ${
-                      currentChatId === chat.id
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                    onClick={() => {
-                      setCurrentChatId(chat.id);
-                      setChatName(chat.name);
-                      setChatType(chat.type);
-                    }}>
-                    {chat.name}
-                  </button>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center mt-8">No chats yet. Create one!</p>
-              )}
-            </div>
-
-            <h2 className="text-xl font-semibold text-gray-800 mt-6 mb-4">Online Users</h2>
-            <div className="flex-1 overflow-y-auto pr-2">
-              {onlineUsers.length > 0 ? (
-                onlineUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    className="flex items-center w-full text-left p-2 rounded-lg transition-colors duration-200 hover:bg-green-100 mb-1"
-                    onClick={() => handleJoinPrivateChat(user.id)}>
-                    <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-                    <span className="text-gray-700">{user.displayName}</span>
-                  </button>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center mt-8">No other users online.</p>
-              )}
-            </div>
-            
-            <div className="mt-auto pt-4 border-t border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Create New Group Chat</h3>
-              <input
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2"
-                placeholder="Enter Group Chat Name"
-                value={chatName}
-                onChange={(e) => setChatName(e.target.value)}
-              />
-              <button
-                className="w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600 transition-colors duration-200"
-                onClick={handleCreateChat}>
-                Create Chat
-              </button>
-            </div>
-          </aside>
-
-          <main className="flex-1 flex flex-col p-4 bg-gray-100">
-            {currentChatId ? (
-              <>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">{chatName}</h2>
-                <div ref={messagesEndRef} className="flex-1 overflow-y-auto space-y-4 p-2 rounded-lg bg-white shadow-inner">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.senderId === userId ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs p-3 rounded-xl shadow ${
-                        message.senderId === userId
-                          ? 'bg-indigo-500 text-white rounded-br-sm'
-                          : 'bg-gray-200 text-gray-800 rounded-bl-sm'
-                      }`}>
-                        <p className={`text-xs font-bold ${message.senderId === userId ? 'text-indigo-200' : 'text-gray-500'}`}>
-                          {message.senderId === userId ? 'You' : `User ${message.senderId.substring(0, 6)}`}
-                        </p>
-                        <p className="mt-1">{message.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex">
-                  <input
-                    className="flex-1 p-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Type a message..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  />
-                  <button
-                    className="ml-2 bg-indigo-500 text-white px-6 py-3 rounded-full hover:bg-indigo-600 transition-colors duration-200 font-semibold"
-                    onClick={handleSendMessage}>
-                    Send
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-500 text-center">
-                <p className="text-lg">Select a chat to begin messaging.</p>
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <input id="promptInput" type="text" placeholder="एक शानदार अंतरिक्ष शहर का विवरण दें..." class="flex-grow p-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">जनरेट</button>
     </div>
-  );
-};
 
-export default App;
+    <div id="imageContainer" class="bg-slate-800 rounded-lg p-4 flex justify-center items-center h-96 border-2 border-dashed border-slate-600 mb-6 relative">
+        <div id="loadingIndicator" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+        <img id="generatedImage" src="" alt="जनरेट की गई इमेज" class="hidden rounded-lg max-w-full max-h-full object-contain">
+        <p id="placeholderText" class="text-slate-500">आपकी इमेज यहाँ दिखाई देगी</p>
+    </div>
+    
+    <div id="downloadContainer" class="hidden">
+        <a id="downloadBtn" href="#" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" download="ai-generated-image.png">इमेज डाउनलोड करें</a>
+    </div>
+
+</div>
+
+<div id="messageBox" class="message-box"></div>
+
+<script>
+    const promptInput = document.getElementById('promptInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const imageContainer = document.getElementById('imageContainer');
+    const generatedImage = document.getElementById('generatedImage');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const placeholderText = document.getElementById('placeholderText');
+    const downloadContainer = document.getElementById('downloadContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const messageBox = document.getElementById('messageBox');
+    
+    // Show a temporary message to the user
+    function showMessage(text) {
+        messageBox.textContent = text;
+        messageBox.classList.add('show');
+        setTimeout(() => {
+            messageBox.classList.remove('show');
+        }, 3000);
+    }
+
+    // Function to handle image generation
+    async function generateImage() {
+        const prompt = promptInput.value.trim();
+        if (!prompt) {
+            showMessage('कृपया इमेज का विवरण दर्ज करें।');
+            return;
+        }
+
+        generatedImage.classList.add('hidden');
+        placeholderText.classList.add('hidden');
+        downloadContainer.classList.add('hidden');
+        loadingIndicator.classList.remove('hidden');
+        generateBtn.disabled = true;
+
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+        
+        const payload = { 
+            instances: { prompt: prompt }, 
+            parameters: { "sampleCount": 1 } 
+        };
+
+        let response;
+        try {
+            response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                const base64Data = result.predictions[0].bytesBase64Encoded;
+                const imageUrl = `data:image/png;base64,${base64Data}`;
+                generatedImage.src = imageUrl;
+                generatedImage.classList.remove('hidden');
+                downloadBtn.href = imageUrl;
+                downloadContainer.classList.remove('hidden');
+            } else {
+                showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
+                placeholderText.classList.remove('hidden');
+            }
+
+        } catch (error) {
+            console.error('API Error:', error);
+            showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
+            placeholderText.classList.remove('hidden');
+        } finally {
+            loadingIndicator.classList.add('hidden');
+            generateBtn.disabled = false;
+        }
+    }
+
+    generateBtn.addEventListener('click', generateImage);
+
+    promptInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            generateImage();
+        }
+    });
+
+</script>
+
+</body>
+</html>
