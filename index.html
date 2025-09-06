@@ -3,230 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI इमेज जनरेटर</title>
+    <title>स्टाइलिश कैलकुलेटर</title>
+    <!-- Tailwind CSS के लिए CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Google Font 'Inter' -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: #1a1a1a;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             min-height: 100vh;
-            padding: 1rem;
+            color: #E0E0E0;
+            padding: 1.5rem;
         }
-        .container {
+        .calculator {
+            background-color: #2a2a2a;
+            padding: 2rem;
+            border-radius: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
             width: 100%;
-            max-width: 768px;
-            background-color: #1e293b;
-            padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            text-align: center;
+            max-width: 380px;
+            border: 1px solid #333;
         }
-        .message-box {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #334155;
-            color: #f8fafc;
-            padding: 1rem 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
+        .display {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: #FFFFFF;
+            font-size: 3.5rem;
+            text-align: right;
+            padding: 1.25rem 1.75rem;
+            border-radius: 2rem;
+            margin-bottom: 1.75rem;
+            overflow-x: auto;
+            white-space: nowrap;
+            letter-spacing: -0.05rem;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
         }
-        .message-box.show {
-            opacity: 1;
-            visibility: visible;
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+        }
+        .btn {
+            background: linear-gradient(145deg, #333333, #222222);
+            color: #E0E0E0;
+            font-size: 1.2rem; /* फॉन्ट साइज़ और भी कम किया गया */
+            font-weight: 500;
+            padding: 1rem; /* पैडिंग कम किया गया */
+            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            outline: none;
+            border: none;
+            box-shadow: 8px 8px 16px #1c1c1c, -8px -8px 16px #383838;
+        }
+        .btn:active {
+            box-shadow: inset 5px 5px 10px #222222, inset -5px -5px 10px #383838;
+            transform: scale(0.95);
+        }
+        .btn:hover {
+            background: #444;
+            color: #fff;
+        }
+        .btn-operator {
+            background: linear-gradient(145deg, #FF9500, #E08700);
+            color: #FFFFFF;
+        }
+        .btn-operator:hover {
+            background: #E08700;
+        }
+        .btn-equals {
+            background: linear-gradient(145deg, #007AFF, #005BB5);
+            color: #FFFFFF;
+            grid-column: span 2;
+            border-radius: 2rem;
+        }
+        .btn-equals:hover {
+            background: #0066CC;
+        }
+        .btn-clear {
+            background: linear-gradient(145deg, #555555, #444444);
+            color: #FFFFFF;
+        }
+        .btn-clear:hover {
+            background: #666666;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 420px) {
+            .calculator {
+                padding: 1.5rem;
+                border-radius: 2rem;
+            }
+            .display {
+                font-size: 3rem;
+                padding: 1rem 1.25rem;
+                margin-bottom: 1.5rem;
+            }
+            .button-grid {
+                gap: 1rem;
+            }
+            .btn {
+                font-size: 1rem; /* मोबाइल पर फॉन्ट साइज़ और भी कम किया गया */
+                padding: 0.75rem; /* मोबाइल पर पैडिंग और भी कम किया गया */
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1 class="text-3xl font-bold mb-4">AI इमेज जनरेटर</h1>
-    <p class="text-gray-400 mb-6">दो इमेजेस अपलोड करें और विवरण टाइप करके 'जनरेट' बटन दबाएँ।</p>
+    <div class="calculator">
+        <div id="display" class="display">0</div>
+        <div class="button-grid">
+            <button class="btn btn-clear" onclick="clearDisplay()">C</button>
+            <button class="btn btn-operator" onclick="appendToDisplay('(')">(</button>
+            <button class="btn btn-operator" onclick="appendToDisplay(')')">)</button>
+            <button class="btn btn-operator" onclick="appendToDisplay('/')">÷</button>
 
-    <div class="flex flex-col md:flex-row items-center gap-4 mb-6">
-        <label for="imageInput1" class="p-3 bg-slate-700 text-slate-100 rounded-lg cursor-pointer hover:bg-slate-600 transition-colors">
-            इमेज 1 अपलोड करें
-        </label>
-        <input id="imageInput1" type="file" accept="image/*" class="hidden">
-        <span id="fileName1" class="text-slate-400">कोई फ़ाइल नहीं चुनी गई</span>
-    </div>
+            <button class="btn" onclick="appendToDisplay('7')">7</button>
+            <button class="btn" onclick="appendToDisplay('8')">8</button>
+            <button class="btn" onclick="appendToDisplay('9')">9</button>
+            <button class="btn btn-operator" onclick="appendToDisplay('*')">×</button>
 
-    <div class="flex flex-col md:flex-row items-center gap-4 mb-6">
-        <label for="imageInput2" class="p-3 bg-slate-700 text-slate-100 rounded-lg cursor-pointer hover:bg-slate-600 transition-colors">
-            इमेज 2 अपलोड करें
-        </label>
-        <input id="imageInput2" type="file" accept="image/*" class="hidden">
-        <span id="fileName2" class="text-slate-400">कोई फ़ाइल नहीं चुनी गई</span>
-    </div>
+            <button class="btn" onclick="appendToDisplay('4')">4</button>
+            <button class="btn" onclick="appendToDisplay('5')">5</button>
+            <button class="btn" onclick="appendToDisplay('6')">6</button>
+            <button class="btn btn-operator" onclick="appendToDisplay('-')">-</button>
 
-    <div class="flex flex-col md:flex-row gap-4 mb-6">
-        <input id="promptInput" type="text" placeholder="दोनों इमेजेस को मिलाकर एक नई इमेज बनाएं..." class="flex-grow p-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">जनरेट</button>
-    </div>
+            <button class="btn" onclick="appendToDisplay('1')">1</button>
+            <button class="btn" onclick="appendToDisplay('2')">2</button>
+            <button class="btn" onclick="appendToDisplay('3')">3</button>
+            <button class="btn btn-operator" onclick="appendToDisplay('+')">+</button>
 
-    <div id="imageContainer" class="bg-slate-800 rounded-lg p-4 flex justify-center items-center h-96 border-2 border-dashed border-slate-600 mb-6 relative">
-        <div id="loadingIndicator" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <button class="btn" onclick="appendToDisplay('0')">0</button>
+            <button class="btn" onclick="appendToDisplay('.')">.</button>
+            <button class="btn" onclick="deleteLast()">⌫</button>
+            <button class="btn btn-equals" onclick="calculate()">=</button>
         </div>
-        <img id="generatedImage" src="" alt="जनरेट की गई इमेज" class="hidden rounded-lg max-w-full max-h-full object-contain">
-        <p id="placeholderText" class="text-slate-500">आपकी इमेज यहाँ दिखाई देगी</p>
-    </div>
-    
-    <div id="downloadContainer" class="hidden">
-        <a id="downloadBtn" href="#" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" download="ai-generated-image.png">इमेज डाउनलोड करें</a>
     </div>
 
-</div>
+    <script>
+        // कैलकुलेटर के डिस्प्ले को दिखाता है
+        const display = document.getElementById('display');
 
-<div id="messageBox" class="message-box"></div>
-
-<script>
-    const promptInput = document.getElementById('promptInput');
-    const imageInput1 = document.getElementById('imageInput1');
-    const imageInput2 = document.getElementById('imageInput2');
-    const fileName1 = document.getElementById('fileName1');
-    const fileName2 = document.getElementById('fileName2');
-    const generateBtn = document.getElementById('generateBtn');
-    const generatedImage = document.getElementById('generatedImage');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const placeholderText = document.getElementById('placeholderText');
-    const downloadContainer = document.getElementById('downloadContainer');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const messageBox = document.getElementById('messageBox');
-    
-    // Show a temporary message to the user
-    function showMessage(text) {
-        messageBox.textContent = text;
-        messageBox.classList.add('show');
-        setTimeout(() => {
-            messageBox.classList.remove('show');
-        }, 3000);
-    }
-
-    // Update file name on selection
-    imageInput1.addEventListener('change', () => {
-        if (imageInput1.files.length > 0) {
-            fileName1.textContent = imageInput1.files[0].name;
-        } else {
-            fileName1.textContent = 'कोई फ़ाइल नहीं चुनी गई';
-        }
-    });
-
-    imageInput2.addEventListener('change', () => {
-        if (imageInput2.files.length > 0) {
-            fileName2.textContent = imageInput2.files[0].name;
-        } else {
-            fileName2.textContent = 'कोई फ़ाइल नहीं चुनी गई';
-        }
-    });
-
-    // Function to handle image generation
-    async function generateImage() {
-        const prompt = promptInput.value.trim();
-        const file1 = imageInput1.files[0];
-        const file2 = imageInput2.files[0];
-
-        if (!prompt || !file1 || !file2) {
-            showMessage('कृपया दोनों इमेजेस अपलोड करें और विवरण दर्ज करें।');
-            return;
+        // डिस्प्ले में वैल्यू जोड़ता है
+        function appendToDisplay(value) {
+            if (display.innerText === '0' && value !== '.' && !isNaN(value)) {
+                display.innerText = value;
+            } else {
+                display.innerText += value;
+            }
         }
 
-        generatedImage.classList.add('hidden');
-        placeholderText.classList.add('hidden');
-        downloadContainer.classList.add('hidden');
-        loadingIndicator.classList.remove('hidden');
-        generateBtn.disabled = true;
-
-        // Read the image files as Data URLs (Base64)
-        const reader1 = new FileReader();
-        const reader2 = new FileReader();
-
-        reader1.onloadend = () => {
-            reader2.onloadend = async () => {
-                const base64Data1 = reader1.result.split(',')[1];
-                const mimeType1 = file1.type;
-                const base64Data2 = reader2.result.split(',')[1];
-                const mimeType2 = file2.type;
-
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
-                
-                const payload = {
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inlineData: { mimeType: mimeType1, data: base64Data1 } },
-                            { inlineData: { mimeType: mimeType2, data: base64Data2 } }
-                        ]
-                    }],
-                    generationConfig: {
-                        responseModalities: ["IMAGE"]
-                    },
-                };
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    
-                    const generatedPart = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-                    if (generatedPart?.inlineData?.data) {
-                        const imageUrl = `data:${generatedPart.inlineData.mimeType};base64,${generatedPart.inlineData.data}`;
-                        generatedImage.src = imageUrl;
-                        generatedImage.classList.remove('hidden');
-                        downloadBtn.href = imageUrl;
-                        downloadContainer.classList.remove('hidden');
-                    } else {
-                        showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
-                        placeholderText.classList.remove('hidden');
-                    }
-
-                } catch (error) {
-                    console.error('API Error:', error);
-                    showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
-                    placeholderText.classList.remove('hidden');
-                } finally {
-                    loadingIndicator.classList.add('hidden');
-                    generateBtn.disabled = false;
-                }
-            };
-            reader2.readAsDataURL(file2);
-        };
-        reader1.readAsDataURL(file1);
-    }
-
-    generateBtn.addEventListener('click', generateImage);
-
-    promptInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            generateImage();
+        // डिस्प्ले को साफ़ करता है
+        function clearDisplay() {
+            display.innerText = '0';
         }
-    });
-</script>
+
+        // आखिरी कैरेक्टर को हटाता है
+        function deleteLast() {
+            if (display.innerText.length > 1) {
+                display.innerText = display.innerText.slice(0, -1);
+            } else {
+                display.innerText = '0';
+            }
+        }
+
+        // एक्सप्रेशन को कैलकुलेट करता है
+        function calculate() {
+            try {
+                // eval() का इस्तेमाल सुरक्षा के लिए जोखिम भरा हो सकता है।
+                // बड़े और गंभीर प्रोजेक्ट्स के लिए, एक सुरक्षित एक्सप्रेशन पार्सर का इस्तेमाल करें।
+                const result = eval(display.innerText.replace(/×/g, '*').replace(/÷/g, '/'));
+                display.innerText = result;
+            } catch (error) {
+                display.innerText = 'Error';
+            }
+        }
+    </script>
 
 </body>
 </html>
