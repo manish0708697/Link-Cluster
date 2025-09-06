@@ -54,10 +54,26 @@
 
 <div class="container">
     <h1 class="text-3xl font-bold mb-4">AI इमेज जनरेटर</h1>
-    <p class="text-gray-400 mb-6">नीचे दिए गए टेक्स्ट बॉक्स में इमेज का विवरण टाइप करें और 'जनरेट' बटन दबाएँ।</p>
+    <p class="text-gray-400 mb-6">दो इमेजेस अपलोड करें और विवरण टाइप करके 'जनरेट' बटन दबाएँ।</p>
+
+    <div class="flex flex-col md:flex-row items-center gap-4 mb-6">
+        <label for="imageInput1" class="p-3 bg-slate-700 text-slate-100 rounded-lg cursor-pointer hover:bg-slate-600 transition-colors">
+            इमेज 1 अपलोड करें
+        </label>
+        <input id="imageInput1" type="file" accept="image/*" class="hidden">
+        <span id="fileName1" class="text-slate-400">कोई फ़ाइल नहीं चुनी गई</span>
+    </div>
+
+    <div class="flex flex-col md:flex-row items-center gap-4 mb-6">
+        <label for="imageInput2" class="p-3 bg-slate-700 text-slate-100 rounded-lg cursor-pointer hover:bg-slate-600 transition-colors">
+            इमेज 2 अपलोड करें
+        </label>
+        <input id="imageInput2" type="file" accept="image/*" class="hidden">
+        <span id="fileName2" class="text-slate-400">कोई फ़ाइल नहीं चुनी गई</span>
+    </div>
 
     <div class="flex flex-col md:flex-row gap-4 mb-6">
-        <input id="promptInput" type="text" placeholder="एक शानदार अंतरिक्ष शहर का विवरण दें..." class="flex-grow p-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input id="promptInput" type="text" placeholder="दोनों इमेजेस को मिलाकर एक नई इमेज बनाएं..." class="flex-grow p-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
         <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">जनरेट</button>
     </div>
 
@@ -82,8 +98,11 @@
 
 <script>
     const promptInput = document.getElementById('promptInput');
+    const imageInput1 = document.getElementById('imageInput1');
+    const imageInput2 = document.getElementById('imageInput2');
+    const fileName1 = document.getElementById('fileName1');
+    const fileName2 = document.getElementById('fileName2');
     const generateBtn = document.getElementById('generateBtn');
-    const imageContainer = document.getElementById('imageContainer');
     const generatedImage = document.getElementById('generatedImage');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const placeholderText = document.getElementById('placeholderText');
@@ -100,11 +119,31 @@
         }, 3000);
     }
 
+    // Update file name on selection
+    imageInput1.addEventListener('change', () => {
+        if (imageInput1.files.length > 0) {
+            fileName1.textContent = imageInput1.files[0].name;
+        } else {
+            fileName1.textContent = 'कोई फ़ाइल नहीं चुनी गई';
+        }
+    });
+
+    imageInput2.addEventListener('change', () => {
+        if (imageInput2.files.length > 0) {
+            fileName2.textContent = imageInput2.files[0].name;
+        } else {
+            fileName2.textContent = 'कोई फ़ाइल नहीं चुनी गई';
+        }
+    });
+
     // Function to handle image generation
     async function generateImage() {
         const prompt = promptInput.value.trim();
-        if (!prompt) {
-            showMessage('कृपया इमेज का विवरण दर्ज करें।');
+        const file1 = imageInput1.files[0];
+        const file2 = imageInput2.files[0];
+
+        if (!prompt || !file1 || !file2) {
+            showMessage('कृपया दोनों इमेजेस अपलोड करें और विवरण दर्ज करें।');
             return;
         }
 
@@ -114,48 +153,70 @@
         loadingIndicator.classList.remove('hidden');
         generateBtn.disabled = true;
 
-        const apiKey = ""; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-        
-        const payload = { 
-            instances: { prompt: prompt }, 
-            parameters: { "sampleCount": 1 } 
+        // Read the image files as Data URLs (Base64)
+        const reader1 = new FileReader();
+        const reader2 = new FileReader();
+
+        reader1.onloadend = () => {
+            reader2.onloadend = async () => {
+                const base64Data1 = reader1.result.split(',')[1];
+                const mimeType1 = file1.type;
+                const base64Data2 = reader2.result.split(',')[1];
+                const mimeType2 = file2.type;
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: mimeType1, data: base64Data1 } },
+                            { inlineData: { mimeType: mimeType2, data: base64Data2 } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["IMAGE"]
+                    },
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    const generatedPart = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    if (generatedPart?.inlineData?.data) {
+                        const imageUrl = `data:${generatedPart.inlineData.mimeType};base64,${generatedPart.inlineData.data}`;
+                        generatedImage.src = imageUrl;
+                        generatedImage.classList.remove('hidden');
+                        downloadBtn.href = imageUrl;
+                        downloadContainer.classList.remove('hidden');
+                    } else {
+                        showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
+                        placeholderText.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('API Error:', error);
+                    showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
+                    placeholderText.classList.remove('hidden');
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                    generateBtn.disabled = false;
+                }
+            };
+            reader2.readAsDataURL(file2);
         };
-
-        let response;
-        try {
-            response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            
-            if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
-                const base64Data = result.predictions[0].bytesBase64Encoded;
-                const imageUrl = `data:image/png;base64,${base64Data}`;
-                generatedImage.src = imageUrl;
-                generatedImage.classList.remove('hidden');
-                downloadBtn.href = imageUrl;
-                downloadContainer.classList.remove('hidden');
-            } else {
-                showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
-                placeholderText.classList.remove('hidden');
-            }
-
-        } catch (error) {
-            console.error('API Error:', error);
-            showMessage('इमेज जनरेट करने में कोई समस्या हुई। कृपया पुनः प्रयास करें।');
-            placeholderText.classList.remove('hidden');
-        } finally {
-            loadingIndicator.classList.add('hidden');
-            generateBtn.disabled = false;
-        }
+        reader1.readAsDataURL(file1);
     }
 
     generateBtn.addEventListener('click', generateImage);
@@ -165,7 +226,6 @@
             generateImage();
         }
     });
-
 </script>
 
 </body>
