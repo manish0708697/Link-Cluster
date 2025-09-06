@@ -1,459 +1,349 @@
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>जार्विस AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .chat-container {
-            max-width: 600px;
-            height: 80vh;
-            display: flex;
-            flex-direction: column;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .message-area {
-            flex-grow: 1;
-            padding: 1rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        .message-bubble {
-            max-width: 80%;
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.5rem;
-            border-radius: 0.75rem;
-        }
-        .user-message {
-            background-color: #3b82f6;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 0;
-        }
-        .bot-message {
-            background-color: #e5e7eb;
-            color: #1f2937;
-            align-self: flex-start;
-            border-bottom-left-radius: 0;
-        }
-        .image-message {
-            align-self: flex-start;
-            border-bottom-left-radius: 0;
-            padding: 0;
-            margin-bottom: 1rem;
-        }
-        .image-message img {
-            max-width: 100%;
-            border-radius: 0.75rem;
-            border-bottom-left-radius: 0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .download-button {
-            margin-top: 0.5rem;
-            background-color: #10b981;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            text-align: center;
-            font-size: 0.875rem;
-            text-decoration: none;
-            display: inline-block;
-            transition: background-color 0.3s;
-        }
-        .download-button:hover {
-            background-color: #059669;
-        }
-        .input-area {
-            display: flex;
-            padding: 1rem;
-            border-top: 1px solid #d1d5db;
-        }
-        #message-input {
-            flex-grow: 1;
-            border: 1px solid #d1d5db;
-            border-radius: 9999px;
-            padding: 0.5rem 1rem;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        #message-input:focus {
-            border-color: #3b82f6;
-        }
-        #send-button {
-            background-color: #2563eb;
-            color: white;
-            border-radius: 9999px;
-            padding: 0.5rem 1.5rem;
-            margin-left: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        #send-button:hover {
-            background-color: #1e40af;
-        }
-        #voice-button {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 9999px;
-            padding: 0.5rem 1rem;
-            margin-left: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #voice-button:hover {
-            background-color: #45a049;
-        }
-        #voice-button.recording {
-            background-color: #f44336;
-        }
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-        /* Typing and Image-generating animation CSS */
-        .typing-indicator, .generating-indicator {
-            align-self: flex-start;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.5rem;
-        }
-        .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            margin: 0 2px;
-            background-color: #d1d5db;
-            border-radius: 50%;
-            opacity: 0;
-            animation: typing-dots 1s infinite;
-        }
-        .generating-indicator {
-            font-size: 0.875rem;
-            color: #6b7280;
-        }
-        @keyframes typing-dots {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 1; }
-        }
-    </style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+// Global variables for Firebase configuration, provided by the canvas environment
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    <div class="chat-container bg-white">
-        <!-- Chat Header -->
-        <div class="bg-blue-600 text-white p-4 text-center rounded-t-xl shadow-md relative">
-            <h1 class="text-2xl font-bold">जार्विस AI</h1>
-            <p class="text-sm opacity-80">नमस्ते, main aapki kaise madad kar sakta hoon?</p>
-            <!-- Clear Chat Button -->
-            <button id="clear-button" class="absolute top-4 right-4 text-white hover:text-gray-200 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [chats, setChats] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [chatName, setChatName] = useState('');
+  const [chatType, setChatType] = useState('private');
+  const messagesEndRef = useRef(null);
+  const [alertMessage, setAlertMessage] = useState(null);
+
+  const showAlert = (message) => {
+    setAlertMessage(message);
+    setTimeout(() => setAlertMessage(null), 3000); // Hide after 3 seconds
+  };
+
+  // 1. Authentication and User Status Management
+  useEffect(() => {
+    // Authenticate the user
+    const setupAuth = async () => {
+      try {
+        if (initialAuthToken) {
+          await signInWithCustomToken(auth, initialAuthToken);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error('Firebase authentication failed:', error);
+      }
+      setIsAuthReady(true);
+    };
+
+    setupAuth();
+
+    // Listen for auth state changes
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setUserId(user.uid);
+      } else {
+        setCurrentUser(null);
+        setUserId(null);
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Set up online/offline status listener and update function
+  useEffect(() => {
+    if (!userId || !isAuthReady) return;
+
+    // Use the correct public data path for online users
+    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userId);
+
+    const updateStatus = async (isOnline) => {
+      const statusData = {
+        displayName: `User ${userId.substring(0, 6)}`,
+        isOnline: isOnline,
+        lastSeen: serverTimestamp(),
+      };
+      await setDoc(userDocRef, statusData, { merge: true });
+    };
+
+    // Set online status on mount
+    updateStatus(true);
+
+    // Set up a listener for online users
+    // Use the correct public data path
+    const onlineUsersQuery = collection(db, 'artifacts', appId, 'public', 'data', 'users');
+    const unsubscribeOnlineUsers = onSnapshot(onlineUsersQuery, (snapshot) => {
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOnlineUsers(users.filter(u => u.isOnline && u.id !== userId));
+    });
+
+    // Cleanup: Set user to offline when component unmounts
+    const handleBeforeUnload = () => {
+      updateStatus(false);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      updateStatus(false);
+      unsubscribeOnlineUsers();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userId, isAuthReady]);
+
+  // 2. Chat Data Logic
+  useEffect(() => {
+    if (!userId || !isAuthReady) return;
+
+    // Listen for the user's chats
+    const userChatsRef = collection(db, 'artifacts', appId, 'users', userId, 'chats');
+    const unsubscribeChats = onSnapshot(userChatsRef, (snapshot) => {
+      const fetchedChats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setChats(fetchedChats);
+      if (fetchedChats.length > 0 && !currentChatId) {
+        setCurrentChatId(fetchedChats[0].id);
+        setChatName(fetchedChats[0].name);
+        setChatType(fetchedChats[0].type);
+      }
+    });
+
+    return () => unsubscribeChats();
+  }, [userId, isAuthReady, currentChatId]);
+
+  // Listen for messages in the current chat
+  useEffect(() => {
+    if (!currentChatId || !userId) return;
+
+    let chatCollectionRef;
+    if (chatType === 'private') {
+      chatCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'chats', currentChatId, 'messages');
+    } else { // group
+      chatCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages');
+    }
+    
+    const unsubscribeMessages = onSnapshot(chatCollectionRef, (snapshot) => {
+      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(fetchedMessages.sort((a, b) => a.createdAt - b.createdAt));
+    });
+
+    return () => unsubscribeMessages();
+  }, [currentChatId, chatType, userId]);
+
+  // Scroll to the bottom of the message list
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // 3. Functions
+  const handleSendMessage = async () => {
+    if (text.trim() === '' || !currentChatId) return;
+
+    try {
+      let chatCollectionRef;
+      if (chatType === 'private') {
+        chatCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'chats', currentChatId, 'messages');
+        const otherParticipantId = currentChatId.replace(userId, '').replace('_', '');
+        // Also add the message to the other user's chat
+        const otherChatRef = collection(db, 'artifacts', appId, 'users', otherParticipantId, 'chats', currentChatId, 'messages');
+        await addDoc(otherChatRef, {
+          text: text,
+          senderId: userId,
+          createdAt: serverTimestamp(),
+        });
+      } else { // group
+        chatCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages');
+      }
+
+      await addDoc(chatCollectionRef, {
+        text: text,
+        senderId: userId,
+        createdAt: serverTimestamp(),
+      });
+
+      setText('');
+    } catch (e) {
+      console.error('Error adding document: ', e);
+    }
+  };
+
+  const handleCreateChat = async () => {
+    if (chatName.trim() === '') {
+      showAlert('Chat name cannot be empty.');
+      return;
+    }
+    const newChatRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'chats'));
+    await setDoc(newChatRef, { name: chatName, type: 'group', createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'chats', newChatRef.id), { name: chatName, type: 'group' });
+    setCurrentChatId(newChatRef.id);
+    setChatName('');
+    setChatType('group');
+  };
+
+  const handleJoinPrivateChat = async (otherUserId) => {
+    // Generate a consistent chatId for private chats between two users
+    const chatId = userId < otherUserId ? `${userId}_${otherUserId}` : `${otherUserId}_${userId}`;
+    
+    // Add chat to the current user's chats collection
+    const myChatRef = doc(db, 'artifacts', appId, 'users', userId, 'chats', chatId);
+    await setDoc(myChatRef, { name: `Chat with User ${otherUserId.substring(0, 6)}`, type: 'private' });
+    
+    // Add chat to the other user's chats collection
+    const otherChatRef = doc(db, 'artifacts', appId, 'users', otherUserId, 'chats', chatId);
+    await setDoc(otherChatRef, { name: `Chat with User ${userId.substring(0, 6)}`, type: 'private' });
+    
+    setCurrentChatId(chatId);
+    setChatName(`Chat with User ${otherUserId.substring(0, 6)}`);
+    setChatType('private');
+  };
+
+  // 4. UI Rendering
+  if (!isAuthReady) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500"></div>
+        <p className="mt-4 text-lg text-indigo-700">Connecting to server...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-screen font-sans bg-gray-100 p-4">
+      <script src="https://cdn.tailwindcss.com"></script>
+      {alertMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white p-3 rounded-lg shadow-lg z-50">
+          {alertMessage}
         </div>
+      )}
+      <div className="flex flex-col flex-1 bg-white rounded-lg shadow-xl overflow-hidden">
+        <header className="bg-indigo-700 text-white p-4 rounded-t-lg text-center shadow-lg">
+          <h1 className="text-3xl font-bold">Real-Time Chat</h1>
+          <p className="mt-1 text-sm text-indigo-200">
+            Your User ID: <span className="font-mono bg-indigo-600 px-2 py-1 rounded-full">{userId}</span>
+          </p>
+        </header>
 
-        <!-- Message Area -->
-        <div id="message-area" class="message-area">
-            <!-- Initial Bot Message -->
-            <div class="bot-message message-bubble">
-                नमस्ते, main jarrvis hoon. Main ek AI sahayak hoon.
+        <div className="flex flex-1 overflow-hidden">
+          <aside className="w-1/4 bg-gray-50 p-4 border-r border-gray-200 flex flex-col">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Chats</h2>
+            <div className="flex-1 overflow-y-auto pr-2">
+              {chats.length > 0 ? (
+                chats.map((chat) => (
+                  <button
+                    key={chat.id}
+                    className={`block w-full text-left p-3 rounded-lg transition-colors duration-200 mb-2 ${
+                      currentChatId === chat.id
+                        ? 'bg-indigo-100 text-indigo-700 font-medium'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    onClick={() => {
+                      setCurrentChatId(chat.id);
+                      setChatName(chat.name);
+                      setChatType(chat.type);
+                    }}>
+                    {chat.name}
+                  </button>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center mt-8">No chats yet. Create one!</p>
+              )}
             </div>
-        </div>
 
-        <!-- Input Area -->
-        <div class="input-area">
-            <input type="text" id="message-input" placeholder="Yahaan type karein..." class="flex-grow rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button id="voice-button">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </button>
-            <button id="send-button" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-full ml-2 hover:bg-blue-700 transition duration-300 ease-in-out">Bhejein</button>
+            <h2 className="text-xl font-semibold text-gray-800 mt-6 mb-4">Online Users</h2>
+            <div className="flex-1 overflow-y-auto pr-2">
+              {onlineUsers.length > 0 ? (
+                onlineUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    className="flex items-center w-full text-left p-2 rounded-lg transition-colors duration-200 hover:bg-green-100 mb-1"
+                    onClick={() => handleJoinPrivateChat(user.id)}>
+                    <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                    <span className="text-gray-700">{user.displayName}</span>
+                  </button>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center mt-8">No other users online.</p>
+              )}
+            </div>
+            
+            <div className="mt-auto pt-4 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Create New Group Chat</h3>
+              <input
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2"
+                placeholder="Enter Group Chat Name"
+                value={chatName}
+                onChange={(e) => setChatName(e.target.value)}
+              />
+              <button
+                className="w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600 transition-colors duration-200"
+                onClick={handleCreateChat}>
+                Create Chat
+              </button>
+            </div>
+          </aside>
+
+          <main className="flex-1 flex flex-col p-4 bg-gray-100">
+            {currentChatId ? (
+              <>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">{chatName}</h2>
+                <div ref={messagesEndRef} className="flex-1 overflow-y-auto space-y-4 p-2 rounded-lg bg-white shadow-inner">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.senderId === userId ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-xs p-3 rounded-xl shadow ${
+                        message.senderId === userId
+                          ? 'bg-indigo-500 text-white rounded-br-sm'
+                          : 'bg-gray-200 text-gray-800 rounded-bl-sm'
+                      }`}>
+                        <p className={`text-xs font-bold ${message.senderId === userId ? 'text-indigo-200' : 'text-gray-500'}`}>
+                          {message.senderId === userId ? 'You' : `User ${message.senderId.substring(0, 6)}`}
+                        </p>
+                        <p className="mt-1">{message.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex">
+                  <input
+                    className="flex-1 p-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Type a message..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <button
+                    className="ml-2 bg-indigo-500 text-white px-6 py-3 rounded-full hover:bg-indigo-600 transition-colors duration-200 font-semibold"
+                    onClick={handleSendMessage}>
+                    Send
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500 text-center">
+                <p className="text-lg">Select a chat to begin messaging.</p>
+              </div>
+            )}
+          </main>
         </div>
+      </div>
     </div>
+  );
+};
 
-    <script>
-        window.onload = function() {
-            const messageInput = document.getElementById('message-input');
-            const sendButton = document.getElementById('send-button');
-            const voiceButton = document.getElementById('voice-button');
-            const clearButton = document.getElementById('clear-button');
-            const messageArea = document.getElementById('message-area');
-            const textApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
-            const imageApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict';
-            const apiKey = '';
-
-            function addMessage(text, sender) {
-                const messageBubble = document.createElement('div');
-                messageBubble.classList.add('message-bubble');
-                
-                if (sender === 'user') {
-                    messageBubble.classList.add('user-message');
-                } else {
-                    messageBubble.classList.add('bot-message');
-                }
-                
-                messageBubble.textContent = text;
-                messageArea.appendChild(messageBubble);
-                messageArea.scrollTop = messageArea.scrollHeight;
-                return messageBubble;
-            }
-
-            function addImageMessage(base64Data) {
-                const messageBubble = document.createElement('div');
-                messageBubble.classList.add('message-bubble', 'image-message');
-                
-                const img = document.createElement('img');
-                img.src = `data:image/png;base64,${base64Data}`;
-                
-                const downloadLink = document.createElement('a');
-                downloadLink.href = img.src;
-                downloadLink.download = 'jarvis_image.png';
-                downloadLink.textContent = 'Tasveer download karein';
-                downloadLink.classList.add('download-button');
-
-                messageBubble.appendChild(img);
-                messageBubble.appendChild(downloadLink);
-                messageArea.appendChild(messageBubble);
-                messageArea.scrollTop = messageArea.scrollHeight;
-            }
-
-            function showTypingIndicator() {
-                const typingDiv = document.createElement('div');
-                typingDiv.id = 'typing-indicator';
-                typingDiv.classList.add('typing-indicator', 'bg-white', 'rounded-full', 'p-2', 'shadow-sm');
-                typingDiv.innerHTML = `<span></span><span></span><span></span>`;
-                messageArea.appendChild(typingDiv);
-                messageArea.scrollTop = messageArea.scrollHeight;
-            }
-
-            function showGeneratingIndicator() {
-                const generatingDiv = document.createElement('div');
-                generatingDiv.id = 'generating-indicator';
-                generatingDiv.classList.add('generating-indicator', 'bg-white', 'rounded-full', 'p-2', 'shadow-sm');
-                generatingDiv.textContent = 'Jawab taiyaar kar raha hoon...';
-                messageArea.appendChild(generatingDiv);
-                messageArea.scrollTop = messageArea.scrollHeight;
-            }
-
-            function hideIndicators() {
-                const typingDiv = document.getElementById('typing-indicator');
-                if (typingDiv) {
-                    typingDiv.remove();
-                }
-                const generatingDiv = document.getElementById('generating-indicator');
-                if (generatingDiv) {
-                    generatingDiv.remove();
-                }
-            }
-
-            function clearChat() {
-                messageArea.innerHTML = '';
-                addMessage("नमस्ते, main jarrvis hoon. Main ek AI sahayak hoon.", 'bot');
-            }
-
-            async function getLLMResponse(userQuery) {
-                let payload;
-
-                const weatherKeywords = ['mausam', 'weather', 'tapmaan', 'garmi', 'baaris', 'baarish'];
-                const isWeatherQuery = weatherKeywords.some(keyword => userQuery.toLowerCase().includes(keyword));
-
-                if (isWeatherQuery) {
-                    payload = {
-                        contents: [{ parts: [{ text: "वर्तमान मौसम, तापमान, और हवा की गति की जानकारी हिंदी में दें।" }] }],
-                        tools: [{ "google_search": {} }],
-                        systemInstruction: {
-                            parts: [{ text: "आप एक मौसम संबंधी AI हैं। आप Google Search का उपयोग करके मौसम की सटीक जानकारी देते हैं। अपने जवाब हिंदी में दें।" }]
-                        },
-                    };
-                } else {
-                    const systemPrompt = "आप एक सहायक रोबोटिक AI हैं। आपके सभी उत्तर हिंदी में होने चाहिए। आप छोटे और मददगार जवाब देते हैं।";
-                    payload = {
-                        contents: [{ parts: [{ text: userQuery }] }],
-                        systemInstruction: {
-                            parts: [{ text: systemPrompt }]
-                        },
-                    };
-                }
-
-                try {
-                    const response = await fetch(`${textApiUrl}?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) {
-                        return { type: 'text', content: text };
-                    } else {
-                        return { type: 'text', content: "Kshamaa chaahte hain, main abhi jawab nahi de paa raha hoon." };
-                    }
-                } catch (error) {
-                    console.error('API call failed:', error);
-                    return { type: 'text', content: "Kshamaa chaahte hain, koi error hua hai. Kripya doobara prayas karein." };
-                }
-            }
-
-            async function getImageResponse(prompt) {
-                const payload = {
-                    instances: {
-                        prompt: prompt
-                    },
-                    parameters: {
-                        sampleCount: 1
-                    }
-                };
-
-                try {
-                    const response = await fetch(`${imageApiUrl}?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
-                    if (base64Data) {
-                        return { type: 'image', content: base64Data };
-                    } else {
-                        return { type: 'text', content: "Tasveer banane mein koi dikkat hui. Kripya doobara prayas karein." };
-                    }
-                } catch (error) {
-                    console.error('Image API call failed:', error);
-                    return { type: 'text', content: "Tasveer banane mein koi error hua hai. Kripya doobara prayas karein." };
-                }
-            }
-
-            async function sendMessage() {
-                const userMessage = messageInput.value.trim();
-                if (userMessage === "") return;
-
-                addMessage(userMessage, 'user');
-                messageInput.value = '';
-                messageInput.disabled = true;
-                sendButton.disabled = true;
-                voiceButton.disabled = true;
-
-                const imageKeywords = ['tasveer', 'chitra', 'image', 'photo'];
-                const videoKeywords = ['video', 'animation', 'short film'];
-                
-                const isImageRequest = imageKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-                const isVideoRequest = videoKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-
-                if (isImageRequest) {
-                    showGeneratingIndicator();
-                    const botResponse = await getImageResponse(userMessage.replace(/tasveer|chitra|image|photo/gi, '').trim());
-                    hideIndicators();
-                    if (botResponse.type === 'image') {
-                        addImageMessage(botResponse.content);
-                    } else {
-                        addMessage(botResponse.content, 'bot');
-                    }
-                } else if (isVideoRequest) {
-                    showGeneratingIndicator();
-                    const basePrompt = userMessage.replace(/video|animation|short film/gi, '').trim() || 'A short story';
-                    
-                    addMessage("Jarvis: Main video nahi bana sakta, lekin main aapke liye ek choti kahani ke roop mein kuch tasveerein bana raha hoon.", 'bot');
-                    
-                    const prompts = [
-                        `${basePrompt}, first scene`,
-                        `${basePrompt}, second scene`,
-                        `${basePrompt}, third scene`,
-                        `${basePrompt}, fourth scene`
-                    ];
-                    
-                    for (const prompt of prompts) {
-                        const botResponse = await getImageResponse(prompt);
-                        if (botResponse.type === 'image') {
-                            addImageMessage(botResponse.content);
-                        }
-                    }
-                    hideIndicators();
-                    
-                } else {
-                    showTypingIndicator();
-                    const botResponse = await getLLMResponse(userMessage);
-                    hideIndicators();
-                    addMessage(botResponse.content, 'bot');
-                }
-
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-                voiceButton.disabled = false;
-            }
-
-            sendButton.addEventListener('click', sendMessage);
-            clearButton.addEventListener('click', clearChat);
-
-            messageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
-
-            // Voice Command functionality
-            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                const recognition = new SpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = 'hi-IN';
-
-                voiceButton.addEventListener('click', () => {
-                    voiceButton.classList.add('recording');
-                    addMessage("बोलें...", 'bot');
-                    recognition.start();
-                });
-
-                recognition.onresult = (event) => {
-                    const speechResult = event.results[0][0].transcript;
-                    messageInput.value = speechResult;
-                    const lastMessage = messageArea.lastChild;
-                    if(lastMessage.textContent === "बोलें...") {
-                        messageArea.removeChild(lastMessage);
-                    }
-                    sendMessage();
-                };
-
-                recognition.onend = () => {
-                    voiceButton.classList.remove('recording');
-                    const lastMessage = messageArea.lastChild;
-                    if(lastMessage && lastMessage.textContent === "बोलें...") {
-                        messageArea.removeChild(lastMessage);
-                    }
-                };
-                
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                    addMessage(`माफ़ कीजिए, आवाज़ को समझने में कोई दिक्कत हुई: ${event.error}`, 'bot');
-                    voiceButton.classList.remove('recording');
-                };
-
-            } else {
-                voiceButton.style.display = 'none';
-                console.warn('Speech Recognition is not supported by your browser.');
-            }
-        };
-    </script>
-</body>
-</html>
+export default App;
