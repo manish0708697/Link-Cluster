@@ -1,189 +1,1080 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>स्टाइलिश कैलकुलेटर</title>
-    <!-- Tailwind CSS के लिए CDN -->
+    <title>Stick-Figure Battle Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Font 'Inter' -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a1a;
+            background-color: #0d0d1a;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            color: #E0E0E0;
-            padding: 1.5rem;
-        }
-        .calculator {
-            background-color: #2a2a2a;
-            padding: 2rem;
-            border-radius: 2.5rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-            width: 100%;
-            max-width: 380px;
-            border: 1px solid #333;
-        }
-        .display {
-            background-color: rgba(0, 0, 0, 0.6);
-            color: #FFFFFF;
-            font-size: 3.5rem;
-            text-align: right;
-            padding: 1.25rem 1.75rem;
-            border-radius: 2rem;
-            margin-bottom: 1.75rem;
-            overflow-x: auto;
-            white-space: nowrap;
-            letter-spacing: -0.05rem;
-            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.25rem;
-        }
-        .btn {
-            background: linear-gradient(145deg, #333333, #222222);
-            color: #E0E0E0;
-            font-size: 1.2rem; /* फॉन्ट साइज़ और भी कम किया गया */
-            font-weight: 500;
-            padding: 1rem; /* पैडिंग कम किया गया */
-            border-radius: 50%;
-            aspect-ratio: 1 / 1;
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-            outline: none;
-            border: none;
-            box-shadow: 8px 8px 16px #1c1c1c, -8px -8px 16px #383838;
-        }
-        .btn:active {
-            box-shadow: inset 5px 5px 10px #222222, inset -5px -5px 10px #383838;
-            transform: scale(0.95);
-        }
-        .btn:hover {
-            background: #444;
-            color: #fff;
-        }
-        .btn-operator {
-            background: linear-gradient(145deg, #FF9500, #E08700);
-            color: #FFFFFF;
-        }
-        .btn-operator:hover {
-            background: #E08700;
-        }
-        .btn-equals {
-            background: linear-gradient(145deg, #007AFF, #005BB5);
-            color: #FFFFFF;
-            grid-column: span 2;
-            border-radius: 2rem;
-        }
-        .btn-equals:hover {
-            background: #0066CC;
-        }
-        .btn-clear {
-            background: linear-gradient(145deg, #555555, #444444);
-            color: #FFFFFF;
-        }
-        .btn-clear:hover {
-            background: #666666;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            flex-direction: column;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 420px) {
-            .calculator {
-                padding: 1.5rem;
-                border-radius: 2rem;
-            }
-            .display {
-                font-size: 3rem;
-                padding: 1rem 1.25rem;
-                margin-bottom: 1.5rem;
-            }
-            .button-grid {
-                gap: 1rem;
-            }
-            .btn {
-                font-size: 1rem; /* मोबाइल पर फॉन्ट साइज़ और भी कम किया गया */
-                padding: 0.75rem; /* मोबाइल पर पैडिंग और भी कम किया गया */
-            }
+        #game-container {
+            position: relative;
+            width: 90%;
+            max-width: 1200px;
+            height: 60vh;
+            background: linear-gradient(to bottom, #1a1a2e, #0d0d1a);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            margin-bottom: 24px;
+        }
+
+        #game-canvas {
+            background-color: transparent;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        #ui-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1200px;
+            padding: 16px;
+            background-color: #1a1a2e;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            color: #ffffff;
+        }
+
+        .ui-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .ui-panel i {
+            color: #fceb9c;
+        }
+
+        #score-display, #health-display {
+            font-size: 1.5rem;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        #game-over-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        #modal-content {
+            background-color: #2e2e4b;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            color: #ffffff;
+            border: 2px solid #5a5a8a;
+            animation: zoomIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #modal-content h2 {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        #modal-content p {
+            font-size: 1.4rem;
+            margin-bottom: 24px;
+        }
+
+        #restart-button {
+            background-color: #4a90e2;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 9999px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #restart-button:hover {
+            transform: translateY(-3px);
+            background-color: #357bd8;
+        }
+
+        .element-btn {
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .element-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .element-btn.active {
+            border-color: #ffffff;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+        }
+
+        #fire-btn { background-color: #ff5252; color: white; }
+        #ice-btn { background-color: #52a3ff; color: white; }
+        #wind-btn { background-color: #8aff8a; color: #2e2e4b; }
+        #earth-btn { background-color: #b07e5e; color: white; }
+        #lightning-btn { 
+            background: linear-gradient(135deg, #fceb9c, #ffcc33);
+            color: #2e2e4b;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
 
-    <div class="calculator">
-        <div id="display" class="display">0</div>
-        <div class="button-grid">
-            <button class="btn btn-clear" onclick="clearDisplay()">C</button>
-            <button class="btn btn-operator" onclick="appendToDisplay('(')">(</button>
-            <button class="btn btn-operator" onclick="appendToDisplay(')')">)</button>
-            <button class="btn btn-operator" onclick="appendToDisplay('/')">÷</button>
-
-            <button class="btn" onclick="appendToDisplay('7')">7</button>
-            <button class="btn" onclick="appendToDisplay('8')">8</button>
-            <button class="btn" onclick="appendToDisplay('9')">9</button>
-            <button class="btn btn-operator" onclick="appendToDisplay('*')">×</button>
-
-            <button class="btn" onclick="appendToDisplay('4')">4</button>
-            <button class="btn" onclick="appendToDisplay('5')">5</button>
-            <button class="btn" onclick="appendToDisplay('6')">6</button>
-            <button class="btn btn-operator" onclick="appendToDisplay('-')">-</button>
-
-            <button class="btn" onclick="appendToDisplay('1')">1</button>
-            <button class="btn" onclick="appendToDisplay('2')">2</button>
-            <button class="btn" onclick="appendToDisplay('3')">3</button>
-            <button class="btn btn-operator" onclick="appendToDisplay('+')">+</button>
-
-            <button class="btn" onclick="appendToDisplay('0')">0</button>
-            <button class="btn" onclick="appendToDisplay('.')">.</button>
-            <button class="btn" onclick="deleteLast()">⌫</button>
-            <button class="btn btn-equals" onclick="calculate()">=</button>
+<div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    <div id="game-over-modal">
+        <div id="modal-content" class="rounded-xl">
+            <h2 class="text-4xl font-bold">खेल खत्म</h2>
+            <p class="text-xl">आपका स्कोर: <span id="final-score">0</span></p>
+            <button id="restart-button" class="px-6 py-3 bg-green-700 text-white rounded-full font-bold">पुनः प्रारंभ करें</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // कैलकुलेटर के डिस्प्ले को दिखाता है
-        const display = document.getElementById('display');
+<div id="ui-container">
+    <div class="ui-panel">
+        <i class="fas fa-bullseye text-yellow-500"></i>
+        <span>स्कोर:</span>
+        <span id="score-display">0</span>
+    </div>
+    <div id="element-buttons" class="flex gap-2">
+        <button id="fire-btn" class="element-btn active" data-element="fire">आग</button>
+        <button id="ice-btn" class="element-btn" data-element="ice">बर्फ</button>
+        <button id="wind-btn" class="element-btn" data-element="wind">हवा</button>
+        <button id="earth-btn" class="element-btn" data-element="earth">पृथ्वी</button>
+        <button id="lightning-btn" class="element-btn" data-element="lightning">बिजली</button>
+    </div>
+    <div class="ui-panel">
+        <i class="fas fa-heart text-red-500"></i>
+        <span>स्वास्थ्य:</span>
+        <span id="health-display">100</span>
+    </div>
+</div>
 
-        // डिस्प्ले में वैल्यू जोड़ता है
-        function appendToDisplay(value) {
-            if (display.innerText === '0' && value !== '.' && !isNaN(value)) {
-                display.innerText = value;
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score-display');
+    const healthDisplay = document.getElementById('health-display');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const restartButton = document.getElementById('restart-button');
+    const elementButtons = document.querySelectorAll('.element-btn');
+
+    // Game state variables
+    let score = 0;
+    let playerHealth = 100;
+    let gameOver = false;
+    let gameLoopInterval;
+    let spawnInterval;
+    let enemies = [];
+    let arrows = [];
+    let particles = [];
+    let activeElement = 'fire'; // Initial active element
+    let stars = [];
+    let isMouseDown = false;
+    let mousePos = { x: 0, y: 0 };
+    let continuousBeam = null;
+
+    // Player character
+    const player = {
+        x: 100,
+        y: 0,
+        isShooting: false,
+    };
+
+    // Game parameters
+    const enemySpawnRate = 1500; // ms
+    const enemySpeed = 1.2;
+    const arrowSpeed = 10;
+    const arrowRadius = 3;
+
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        player.y = canvas.height - 100;
+        drawBackground();
+        generateStars();
+    }
+    
+    // Function to generate and store stars once
+    function generateStars() {
+        stars = [];
+        for (let i = 0; i < 200; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height * 0.7,
+                radius: Math.random() * 1.5
+            });
+        }
+    }
+
+    // Function to draw a more detailed, layered background
+    function drawBackground() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Sky and Moon
+        const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
+        skyGradient.addColorStop(0, '#1a1a2e');
+        skyGradient.addColorStop(1, '#0d0d1a');
+        ctx.fillStyle = skyGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Stars
+        ctx.fillStyle = '#ffffff';
+        stars.forEach(star => {
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Moon
+        ctx.fillStyle = '#f0f0c0';
+        ctx.beginPath();
+        ctx.arc(canvas.width - 150, 100, 50, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b0b0a0';
+        ctx.beginPath();
+        ctx.arc(canvas.width - 130, 80, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(canvas.width - 170, 110, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Distant mountains
+        ctx.fillStyle = '#1c1c2e';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * 0.5);
+        ctx.lineTo(canvas.width * 0.2, canvas.height * 0.4);
+        ctx.lineTo(canvas.width * 0.5, canvas.height * 0.6);
+        ctx.lineTo(canvas.width * 0.8, canvas.height * 0.3);
+        ctx.lineTo(canvas.width, canvas.height * 0.5);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Middleground Mountains
+        ctx.fillStyle = '#22223a';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * 0.6);
+        ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.5, canvas.width * 0.5, canvas.height * 0.7);
+        ctx.quadraticCurveTo(canvas.width * 0.75, canvas.height * 0.8, canvas.width, canvas.height * 0.6);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Foreground Ground with detail
+        const groundGradient = ctx.createLinearGradient(0, canvas.height * 0.8, 0, canvas.height);
+        groundGradient.addColorStop(0, '#2d2d48');
+        groundGradient.addColorStop(1, '#1e1e36');
+        ctx.fillStyle = groundGradient;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * 0.8);
+        ctx.quadraticCurveTo(canvas.width * 0.4, canvas.height * 0.7, canvas.width * 0.8, canvas.height * 0.85);
+        ctx.quadraticCurveTo(canvas.width, canvas.height * 0.9, canvas.width, canvas.height);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add foreground elements (rocks/bushes)
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath();
+        ctx.arc(150, canvas.height - 20, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(canvas.width - 200, canvas.height - 30, 20, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Player with Staff
+    function drawPlayer(x, y, isShooting) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        // Legs
+        ctx.fillStyle = '#4a4e69';
+        ctx.fillRect(-12, 10, 10, 25);
+        ctx.fillRect(2, 10, 10, 25);
+
+        // Body Armor
+        ctx.fillStyle = '#9e9e9e';
+        ctx.fillRect(-15, -40, 30, 50);
+
+        // Shoulders
+        ctx.beginPath();
+        ctx.arc(-15, -40, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(15, -40, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head and Helmet
+        ctx.fillStyle = '#fdbf83';
+        ctx.beginPath();
+        ctx.arc(0, -65, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#7a7a7a';
+        ctx.beginPath();
+        ctx.arc(0, -65, 15, Math.PI, 0);
+        ctx.lineTo(15, -60);
+        ctx.lineTo(-15, -60);
+        ctx.closePath();
+        ctx.fill();
+
+        // Arms
+        ctx.fillStyle = '#555';
+        ctx.fillRect(-25, -30, 10, 20);
+        ctx.fillRect(15, -30, 10, 20);
+
+        // Magic Staff
+        let staffColor;
+        switch(activeElement) {
+            case 'fire': staffColor = '#ff5252'; break;
+            case 'ice': staffColor = '#52a3ff'; break;
+            case 'wind': staffColor = '#8aff8a'; break;
+            case 'earth': staffColor = '#b07e5e'; break;
+            case 'lightning': staffColor = '#fceb9c'; break;
+            default: staffColor = '#a0a0a0';
+        }
+        ctx.fillStyle = '#444';
+        ctx.fillRect(20, -60, 5, 80);
+        ctx.fillStyle = staffColor;
+        ctx.beginPath();
+        ctx.arc(22.5, -60, 8, 0, Math.PI * 2);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = staffColor;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+    }
+
+    // Function to draw a more detailed enemy
+    function drawEnemy(enemy) {
+        ctx.save();
+        ctx.translate(enemy.x, enemy.y);
+        
+        // Agar dushman jama hua hai, to uspar ice layer draw karen
+        if (enemy.isFrozen) {
+            ctx.fillStyle = enemy.frozenColor;
+            ctx.globalAlpha = 0.5;
+            ctx.fillRect(-15, -75, 30, 110);
+            ctx.globalAlpha = 1;
+        }
+
+        // Draw bones if enemy is shocked by lightning
+        if (enemy.isShocked) {
+            ctx.fillStyle = '#e0e0e0';
+            ctx.globalAlpha = 0.9;
+            // Skull
+            ctx.beginPath();
+            ctx.arc(0, -65, 8, 0, Math.PI * 2);
+            ctx.fill();
+            // Spine
+            ctx.fillRect(-2, -50, 4, 35);
+            // Pelvis
+            ctx.fillRect(-10, -15, 20, 5);
+            // Ribs
+            ctx.fillRect(-12, -40, 24, 2);
+            ctx.fillRect(-12, -35, 24, 2);
+            ctx.fillRect(-12, -30, 24, 2);
+            // Arms
+            ctx.fillRect(-15, -30, 4, 20);
+            ctx.fillRect(11, -30, 4, 20);
+            // Legs
+            ctx.fillRect(-8, 10, 4, 25);
+            ctx.fillRect(4, 10, 4, 25);
+
+            ctx.globalAlpha = 1;
+            ctx.restore();
+            return; // Don't draw the rest of the enemy body
+        }
+        
+        // Agar dushman jal raha hai
+        if (enemy.isBurning) {
+            const burnProgress = (Date.now() - enemy.burnTime) / 500;
+            const burnAlpha = 1 - burnProgress;
+            ctx.globalAlpha = burnAlpha;
+
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-15, -75, 30, 110);
+
+            // राख को दिखायें
+            if (burnProgress >= 0.9) {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(-15, -75, 30, 110);
+                ctx.globalAlpha = 1;
+                ctx.restore();
+                return;
+            }
+        }
+
+
+        // Legs
+        ctx.fillStyle = enemy.bodyColor;
+        ctx.fillRect(-12, 10, 10, 25);
+        ctx.fillRect(2, 10, 10, 25);
+
+        // Body Armor
+        ctx.fillStyle = enemy.armorColor;
+        ctx.fillRect(-15, -40, 30, 50);
+
+        // Shoulders
+        ctx.beginPath();
+        ctx.arc(-15, -40, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(15, -40, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head and Helmet
+        ctx.fillStyle = '#fdbf83';
+        ctx.beginPath();
+        ctx.arc(0, -65, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = enemy.helmetColor;
+        ctx.beginPath();
+        ctx.arc(0, -65, 15, Math.PI, 0);
+        ctx.lineTo(15, -60);
+        ctx.lineTo(-15, -60);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Arms and Weapon
+        ctx.fillStyle = enemy.bodyColor;
+        ctx.fillRect(-25, -30, 10, 20);
+        ctx.fillRect(15, -30, 10, 20);
+
+        if (enemy.type === 'archer') {
+            // Bow
+            ctx.strokeStyle = enemy.bowColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(15, -15);
+            ctx.lineTo(15, -45);
+            ctx.stroke();
+            ctx.strokeStyle = '#52525b';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(15, -15);
+            ctx.lineTo(15, -45);
+            ctx.stroke();
+        } else if (enemy.type === 'swordsman') {
+            // Sword
+            ctx.fillStyle = '#a0a0a0';
+            ctx.fillRect(15, -30, 5, 20);
+            ctx.fillStyle = '#555';
+            ctx.fillRect(13, -10, 9, 2);
+            // Shield
+            ctx.fillStyle = enemy.shieldColor;
+            ctx.beginPath();
+            ctx.arc(-20, -25, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    function drawHealthBar(x, y, health, maxHealth) {
+        const barWidth = 40;
+        const barHeight = 5;
+        const healthRatio = health / maxHealth;
+
+        ctx.fillStyle = '#555';
+        ctx.fillRect(x - barWidth / 2, y - 75, barWidth, barHeight);
+
+        ctx.fillStyle = '#4ee44e';
+        ctx.fillRect(x - barWidth / 2, y - 75, barWidth * healthRatio, barHeight);
+
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - barWidth / 2, y - 75, barWidth, barHeight);
+    }
+    
+    function createParticles(x, y, element, count) {
+        let colors, shape, sizeRange;
+        switch(element) {
+            case 'fire':
+                colors = ['#ff5252', '#ff8a52', '#ffd952'];
+                shape = 'flame';
+                sizeRange = [2, 5];
+                break;
+            case 'ice':
+                colors = ['#52a3ff', '#a3d9ff', '#d9f5ff'];
+                shape = 'star';
+                sizeRange = [2, 5];
+                break;
+            case 'wind':
+                colors = ['#8aff8a', '#d9ffd9', '#e0ffe0'];
+                shape = 'line';
+                sizeRange = [5, 10];
+                break;
+            case 'earth':
+                colors = ['#b07e5e', '#a37152', '#916346'];
+                shape = 'polygon';
+                sizeRange = [3, 7];
+                break;
+            case 'lightning':
+                colors = ['#ffff99', '#ffcc33', '#ffd700'];
+                shape = 'lightning';
+                sizeRange = [2, 5];
+                break;
+            default:
+                colors = ['#c0c0c0', '#d0d0d0', '#e0e0e0'];
+                shape = 'circle';
+                sizeRange = [2, 5];
+        }
+
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x,
+                y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                size: Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0],
+                life: 90,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                element: element,
+                shape: shape
+            });
+        }
+    }
+
+    function drawParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+
+            if (p.life <= 0) {
+                particles.splice(i, 1);
             } else {
-                display.innerText += value;
+                ctx.globalAlpha = p.life / 90;
+                ctx.fillStyle = p.color;
+                ctx.strokeStyle = p.color;
+                
+                switch(p.shape) {
+                    case 'circle':
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'flame':
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x + p.size, p.y - p.size);
+                        ctx.lineTo(p.x + p.size/2, p.y - p.size*2);
+                        ctx.lineTo(p.x - p.size/2, p.y - p.size*2);
+                        ctx.lineTo(p.x - p.size, p.y - p.size);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'star':
+                        ctx.beginPath();
+                        ctx.moveTo(p.x + p.size, p.y);
+                        for (let j = 0; j < 5; j++) {
+                            ctx.lineTo(p.x + Math.cos((18 + j*72) * Math.PI / 180) * p.size,
+                                       p.y - Math.sin((18 + j*72) * Math.PI / 180) * p.size);
+                            ctx.lineTo(p.x + Math.cos((54 + j*72) * Math.PI / 180) * p.size / 2,
+                                       p.y - Math.sin((54 + j*72) * Math.PI / 180) * p.size / 2);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'line':
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x + p.vx * 5, p.y + p.vy * 5);
+                        ctx.stroke();
+                        break;
+                    case 'polygon':
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x + p.size, p.y);
+                        ctx.lineTo(p.x + p.size / 2, p.y + p.size);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'lightning':
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x + (Math.random() - 0.5) * 10, p.y - p.size * 2);
+                        ctx.lineTo(p.x + (Math.random() - 0.5) * 10, p.y - p.size * 4);
+                        ctx.stroke();
+                        break;
+                }
             }
         }
+        ctx.globalAlpha = 1;
+    }
 
-        // डिस्प्ले को साफ़ करता है
-        function clearDisplay() {
-            display.innerText = '0';
+    // Function to draw a magical projectile
+    function drawArrow(arrow) {
+        ctx.save();
+        ctx.translate(arrow.x, arrow.y);
+        ctx.rotate(Math.atan2(arrow.vy, arrow.vx));
+
+        let color, shadowColor;
+        switch (arrow.element) {
+            case 'earth': color = '#b07e5e'; shadowColor = '#a37152'; break;
+            default: color = '#c0c0c0'; shadowColor = '#d0d0d0'; break;
         }
 
-        // आखिरी कैरेक्टर को हटाता है
-        function deleteLast() {
-            if (display.innerText.length > 1) {
-                display.innerText = display.innerText.slice(0, -1);
-            } else {
-                display.innerText = '0';
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = shadowColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        ctx.restore();
+    }
+    
+    // Function to draw the continuous lightning beam
+    function drawLightningBeam(startPos, endPos) {
+        ctx.save();
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#ffff99';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ffff99';
+        
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        
+        // Create jagged, realistic lightning path
+        const segmentCount = 10;
+        let prevPoint = startPos;
+        for (let i = 0; i < segmentCount; i++) {
+            const progress = (i + 1) / segmentCount;
+            const x = startPos.x + (endPos.x - startPos.x) * progress;
+            const y = startPos.y + (endPos.y - startPos.y) * progress;
+            const jitterX = (Math.random() - 0.5) * 20;
+            const jitterY = (Math.random() - 0.5) * 20;
+            ctx.lineTo(x + jitterX, y + jitterY);
+            prevPoint = { x: x + jitterX, y: y + jitterY };
+        }
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    // Function to draw the continuous fire beam
+    function drawFireBeam(startPos, endPos) {
+        ctx.save();
+        
+        // Outer glow
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#ff5252';
+        ctx.lineWidth = 15;
+        ctx.strokeStyle = 'rgba(255, 82, 82, 0.5)';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+
+        // Inner fire
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff8a52';
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = 'rgba(255, 138, 82, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+
+        // Core flame
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffd952';
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'rgba(255, 217, 82, 1)';
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+    
+    // Function to draw the continuous wind gust
+    function drawWindGust(startPos, endPos) {
+        ctx.save();
+        ctx.lineWidth = 20; // Thicker for a gust effect
+        ctx.strokeStyle = 'rgba(138, 255, 138, 0.3)'; // Semi-transparent color
+        ctx.lineCap = 'round';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#8aff8a';
+        
+        // Draw the main line of the gust
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+        
+        // Add some smaller, swirly lines for visual dynamism
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'rgba(224, 255, 224, 0.8)';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.quadraticCurveTo(
+            startPos.x + (endPos.x - startPos.x) * 0.5 + (Math.random() - 0.5) * 50,
+            startPos.y + (endPos.y - startPos.y) * 0.5 + (Math.random() - 0.5) * 50,
+            endPos.x, endPos.y
+        );
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Function to draw the continuous ice beam
+    function drawIceBeam(startPos, endPos) {
+        ctx.save();
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = 'rgba(82, 163, 255, 0.7)';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#52a3ff';
+        ctx.lineCap = 'round';
+        
+        // Draw a series of offset lines to create a "blizzard" or "crystal" effect
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(startPos.x + (Math.random() - 0.5) * 10, startPos.y + (Math.random() - 0.5) * 10);
+            ctx.lineTo(endPos.x + (Math.random() - 0.5) * 10, endPos.y + (Math.random() - 0.5) * 10);
+            ctx.stroke();
+        }
+        
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+
+    function drawEntities() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+        drawPlayer(player.x, player.y, player.isShooting);
+
+        enemies.forEach(enemy => {
+            drawEnemy(enemy);
+            drawHealthBar(enemy.x, enemy.y, enemy.health, enemy.maxHealth);
+        });
+
+        // Ab arrows sirf earth element ke liye hain
+        if (activeElement === 'earth') {
+            arrows.forEach(arrow => {
+                drawArrow(arrow);
+                createParticles(arrow.x, arrow.y, arrow.element, 1);
+            });
+        }
+
+        // Continuous beam fire, lightning, wind, aur ice ke liye
+        if (continuousBeam) {
+            if (activeElement === 'lightning') {
+                drawLightningBeam(continuousBeam.start, continuousBeam.end);
+            } else if (activeElement === 'fire') {
+                drawFireBeam(continuousBeam.start, continuousBeam.end);
+            } else if (activeElement === 'wind') {
+                drawWindGust(continuousBeam.start, continuousBeam.end);
+            } else if (activeElement === 'ice') {
+                drawIceBeam(continuousBeam.start, continuousBeam.end);
             }
         }
+        
+        drawParticles();
+    }
 
-        // एक्सप्रेशन को कैलकुलेट करता है
-        function calculate() {
-            try {
-                // eval() का इस्तेमाल सुरक्षा के लिए जोखिम भरा हो सकता है।
-                // बड़े और गंभीर प्रोजेक्ट्स के लिए, एक सुरक्षित एक्सप्रेशन पार्सर का इस्तेमाल करें।
-                const result = eval(display.innerText.replace(/×/g, '*').replace(/÷/g, '/'));
-                display.innerText = result;
-            } catch (error) {
-                display.innerText = 'Error';
+    function updateGame() {
+        if (gameOver) return;
+
+        enemies.forEach(enemy => {
+            // Agar dushman jama hua ya jhatka laga hua nahi hai, to aage badhe
+            if (!enemy.isFrozen && !enemy.isShocked && !enemy.isBurning) {
+                let currentSpeed = enemySpeed;
+                enemy.x -= currentSpeed;
             }
-        }
-    </script>
+            
+            // Jama hua dushman 5 seconds baad mar jayega
+            if (enemy.isFrozen && Date.now() - enemy.frozenTime > 5000) {
+                enemy.health = 0; // Enemy ko mar do
+                score += 100; // Point do
+                scoreDisplay.textContent = score;
+                createParticles(enemy.x, enemy.y, 'ice', 50); // Tootne ka effect dikhao
+            }
 
+            // Bijli se jhatka laga dushman 500ms baad mar jayega
+            if (enemy.isShocked && Date.now() - enemy.shockTime > 500) {
+                enemy.health = 0;
+                score += 100;
+                scoreDisplay.textContent = score;
+            }
+
+            // Jalne wala dushman 500ms baad mar jayega
+            if (enemy.isBurning && Date.now() - enemy.burnTime > 500) {
+                enemy.health = 0;
+                score += 100;
+                scoreDisplay.textContent = score;
+            }
+        });
+
+        // Update arrow positions
+        if (activeElement === 'earth') {
+            arrows.forEach(arrow => {
+                arrow.x += arrow.vx;
+                arrow.y += arrow.vy;
+            });
+        }
+        
+        // Handle continuous beam damage (fire & lightning) aur wind/ice ka push/freeze effect
+        // Lagataar jaadu ka prahaar mouse cursor ke position ko target karega
+        if (isMouseDown) {
+            const staffTip = { x: player.x + 22.5, y: player.y - 60 };
+            
+            // Beam hamesha mouse ki position par draw hoga
+            continuousBeam = { start: staffTip, end: mousePos };
+
+            enemies.forEach(enemy => {
+                const distance = Math.hypot(mousePos.x - enemy.x, mousePos.y - enemy.y);
+                if (distance < 50) { // Forgiving collision detection
+                    if (activeElement === 'fire' && !enemy.isBurning && !enemy.isShocked && !enemy.isFrozen) {
+                        // Burn the enemy and set a timer for its death
+                        enemy.isBurning = true;
+                        enemy.burnTime = Date.now();
+                        createParticles(enemy.x, enemy.y, 'fire', 50);
+                    } else if (activeElement === 'lightning' && !enemy.isShocked && !enemy.isFrozen && !enemy.isBurning) {
+                         // Shock the enemy, start a timer, and create particles
+                        enemy.isShocked = true;
+                        enemy.shockTime = Date.now();
+                        createParticles(enemy.x, enemy.y, 'lightning', 50);
+                    } else if (activeElement === 'ice' && !enemy.isFrozen && !enemy.isShocked && !enemy.isBurning) {
+                        // Freeze the enemy and set a timer for its death
+                        enemy.isFrozen = true;
+                        enemy.frozenTime = Date.now();
+                        enemy.frozenColor = '#52a3ff';
+                        createParticles(enemy.x, enemy.y, 'ice', 50);
+                    } else if (activeElement === 'wind' && !enemy.isFrozen && !enemy.isShocked && !enemy.isBurning) {
+                        // Push the enemy away
+                        const pushFactor = 5;
+                        const dx = enemy.x - mousePos.x;
+                        const dy = enemy.y - mousePos.y;
+                        const angle = Math.atan2(dy, dx);
+                        
+                        enemy.x += Math.cos(angle) * pushFactor;
+                        enemy.y += Math.sin(angle) * pushFactor;
+                        createParticles(enemy.x, enemy.y, 'wind', 5);
+                    }
+                }
+            });
+        } else {
+            continuousBeam = null;
+        }
+
+        // Handle arrow collisions (earth)
+        arrows.forEach((arrow, arrowIndex) => {
+            enemies.forEach((enemy, enemyIndex) => {
+                const distance = Math.hypot(arrow.x - enemy.x, arrow.y - enemy.y);
+                if (distance < 30) {
+                    // Earth ke liye alag alag effect
+                    if (arrow.element === 'earth') {
+                        enemy.health = 0; // Dushman ko mar do
+                        score += 100;
+                        scoreDisplay.textContent = score;
+                    }
+                    createParticles(arrow.x, arrow.y, arrow.element, 50);
+                    arrows.splice(arrowIndex, 1);
+                }
+            });
+        });
+
+        // Handle enemy reaching the player
+        enemies.forEach((enemy, enemyIndex) => {
+            const distance = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+            if (distance < 50) {
+                playerHealth -= 20;
+                healthDisplay.textContent = playerHealth;
+                enemies.splice(enemyIndex, 1);
+                if (playerHealth <= 0) {
+                    endGame();
+                }
+            }
+        });
+
+        // Clean up off-screen projectiles and dead enemies
+        arrows = arrows.filter(arrow => arrow.x < canvas.width + 10 && arrow.x > -10 && arrow.y > -10);
+        enemies = enemies.filter(enemy => enemy.x > -50 && enemy.health > 0);
+        
+        drawEntities();
+    }
+
+    function spawnEnemy() {
+        const x = canvas.width + 50;
+        const y = canvas.height - 100;
+        const enemyType = Math.random() < 0.5 ? 'archer' : 'swordsman';
+        const enemy = {
+            x,
+            y,
+            type: enemyType,
+            health: 50,
+            maxHealth: 50,
+            bodyColor: enemyType === 'archer' ? '#8c2222' : '#22448c',
+            armorColor: enemyType === 'archer' ? '#ff3333' : '#3366ff',
+            helmetColor: enemyType === 'archer' ? '#661919' : '#193366',
+            bowColor: enemyType === 'archer' ? '#8b5e3c' : '',
+            shieldColor: enemyType === 'swordsman' ? '#e6b800' : '',
+            isFrozen: false, // Naya property jama hone ke liye
+            frozenTime: 0,
+            frozenColor: '',
+            isShocked: false, // Bijli ke jhatke ke liye naya property
+            shockTime: 0,
+            isBurning: false, // Jalne ke liye naya property
+            burnTime: 0
+        };
+        enemies.push(enemy);
+    }
+
+    function endGame() {
+        gameOver = true;
+        clearInterval(gameLoopInterval);
+        clearInterval(spawnInterval);
+        finalScoreDisplay.textContent = score;
+        gameOverModal.style.display = 'flex';
+    }
+
+    function resetGame() {
+        score = 0;
+        playerHealth = 100;
+        gameOver = false;
+        enemies = [];
+        arrows = [];
+        particles = [];
+        continuousBeam = null;
+        scoreDisplay.textContent = score;
+        healthDisplay.textContent = playerHealth;
+        gameOverModal.style.display = 'none';
+        
+        gameLoopInterval = setInterval(updateGame, 1000 / 60);
+        spawnInterval = setInterval(spawnEnemy, enemySpawnRate);
+    }
+    
+    function onMouseDown(event) {
+        isMouseDown = true;
+        mousePos = { x: event.clientX - canvas.getBoundingClientRect().left, y: event.clientY - canvas.getBoundingClientRect().top };
+        
+        // Projectile spells sirf earth element ke liye
+        if (activeElement === 'earth') {
+            shootArrow(mousePos);
+        }
+    }
+    
+    function onMouseUp(event) {
+        isMouseDown = false;
+        player.isShooting = false;
+    }
+
+    function onMouseMove(event) {
+        mousePos = { x: event.clientX - canvas.getBoundingClientRect().left, y: event.clientY - canvas.getBoundingClientRect().top };
+    }
+    
+    function shootArrow(targetPos) {
+        if (gameOver) return;
+        
+        player.isShooting = true;
+        
+        const dx = targetPos.x - player.x;
+        const dy = targetPos.y - player.y;
+        const angle = Math.atan2(dy, dx);
+
+        const vx = Math.cos(angle) * arrowSpeed;
+        const vy = Math.sin(angle) * arrowSpeed;
+
+        arrows.push({
+            x: player.x,
+            y: player.y,
+            vx,
+            vy,
+            element: activeElement
+        });
+        
+        setTimeout(() => {
+            player.isShooting = false;
+        }, 100);
+    }
+
+    elementButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            elementButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            activeElement = button.dataset.element;
+        });
+    });
+
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('mousemove', onMouseMove);
+    
+    restartButton.addEventListener('click', resetGame);
+
+    window.addEventListener('load', () => {
+        resizeCanvas();
+        resetGame();
+    });
+    window.addEventListener('resize', resizeCanvas);
+</script>
 </body>
 </html>
